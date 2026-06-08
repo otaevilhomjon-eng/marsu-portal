@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Портал аттестации МарГУ</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <!-- EmailJS for real email sending -->
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --primary:#1a3a6b;--primary-light:#2354a0;--accent:#4CAF82;--accent2:#e8a020;
+      --danger:#e05252;--bg:#f4f6fb;--card:#ffffff;--border:#dde3ef;
+      --text:#1a2340;--text2:#5a6a8a;--shadow:0 2px 12px rgba(26,58,107,.08);--radius:12px;
+    }
+    body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+
+    /* ── AUTH ── */
+    #auth-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;
+      background:linear-gradient(135deg,#1a3a6b 0%,#2354a0 60%,#1a6b55 100%);}
+    .auth-box{background:white;border-radius:20px;padding:44px 40px;width:100%;max-width:460px;
+      box-shadow:0 20px 60px rgba(0,0,0,.25);max-height:95vh;overflow-y:auto;}
+    .auth-logo{display:flex;align-items:center;gap:12px;margin-bottom:28px;}
+    .auth-logo-icon{width:48px;height:48px;background:var(--primary);border-radius:12px;
+      display:flex;align-items:center;justify-content:center;color:white;font-size:24px;}
+    .auth-logo h1{font-size:18px;font-weight:700;color:var(--primary);line-height:1.2;}
+    .auth-logo p{font-size:11px;color:var(--text2);}
+    .auth-tabs{display:flex;border-bottom:2px solid var(--border);margin-bottom:24px;}
+    .auth-tab{flex:1;padding:10px;text-align:center;cursor:pointer;font-size:14px;font-weight:500;
+      color:var(--text2);border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .2s;}
+    .auth-tab.active{color:var(--primary);border-bottom-color:var(--primary);}
+    .form-group{margin-bottom:15px;}
+    .form-group label{display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:5px;text-transform:uppercase;letter-spacing:.3px;}
+    .form-group input,.form-group select{width:100%;padding:10px 13px;border:1.5px solid var(--border);
+      border-radius:8px;font-size:14px;color:var(--text);transition:border-color .2s;outline:none;background:white;font-family:inherit;}
+    .form-group input:focus,.form-group select:focus{border-color:var(--primary);}
+    .btn-primary{width:100%;padding:12px;background:var(--primary);color:white;border:none;
+      border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;transition:background .2s;font-family:inherit;}
+    .btn-primary:hover{background:var(--primary-light);}
+    .auth-switch{text-align:center;margin-top:14px;font-size:13px;color:var(--text2);}
+    .auth-switch a{color:var(--primary);cursor:pointer;font-weight:500;}
+    .role-select{display:flex;gap:8px;margin-bottom:15px;}
+    .role-btn{flex:1;padding:9px 6px;border:2px solid var(--border);border-radius:8px;cursor:pointer;
+      text-align:center;font-size:12px;font-weight:600;color:var(--text2);transition:all .2s;background:white;}
+    .role-btn.active{border-color:var(--primary);color:var(--primary);background:#eef2ff;}
+    .role-btn:disabled,.role-btn[data-disabled="1"]{opacity:.35;cursor:not-allowed;pointer-events:none;}
+
+    /* ── OTP SCREEN ── */
+    #otp-screen{display:none;min-height:100vh;align-items:center;justify-content:center;
+      background:linear-gradient(135deg,#1a3a6b 0%,#2354a0 60%,#1a6b55 100%);}
+    .otp-box{background:white;border-radius:20px;padding:44px 40px;width:100%;max-width:400px;
+      box-shadow:0 20px 60px rgba(0,0,0,.25);text-align:center;}
+    .otp-icon{font-size:48px;margin-bottom:16px;}
+    .otp-box h2{font-size:20px;font-weight:700;margin-bottom:8px;}
+    .otp-box p{font-size:13px;color:var(--text2);margin-bottom:24px;line-height:1.5;}
+    .otp-inputs{display:flex;gap:10px;justify-content:center;margin-bottom:20px;}
+    .otp-input{width:52px;height:58px;border:2px solid var(--border);border-radius:10px;
+      text-align:center;font-size:24px;font-weight:700;color:var(--primary);outline:none;
+      transition:border-color .2s;font-family:inherit;}
+    .otp-input:focus{border-color:var(--primary);}
+    .otp-resend{font-size:13px;color:var(--text2);margin-top:12px;}
+    .otp-resend a{color:var(--primary);cursor:pointer;font-weight:500;}
+    .otp-timer{color:var(--danger);font-weight:600;}
+
+    /* ── LAYOUT ── */
+    #app{display:none;min-height:100vh;}
+    .topbar{background:var(--primary);color:white;display:flex;align-items:center;
+      padding:0 24px;height:60px;gap:16px;box-shadow:0 2px 8px rgba(0,0,0,.2);}
+    .topbar-logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:16px;white-space:nowrap;}
+    .topbar-logo span{font-size:20px;}
+    .topbar-nav{display:flex;gap:4px;margin-left:20px;flex-wrap:wrap;}
+    .nav-btn{padding:7px 14px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:500;
+      color:rgba(255,255,255,.75);border:none;background:transparent;transition:all .2s;white-space:nowrap;}
+    .nav-btn.active,.nav-btn:hover{background:rgba(255,255,255,.15);color:white;}
+    .topbar-right{margin-left:auto;display:flex;align-items:center;gap:12px;flex-shrink:0;}
+    .notif-btn{background:transparent;border:none;color:white;font-size:20px;cursor:pointer;position:relative;}
+    .notif-badge{position:absolute;top:-4px;right:-4px;background:var(--danger);color:white;
+      font-size:10px;font-weight:700;border-radius:50%;width:16px;height:16px;
+      display:flex;align-items:center;justify-content:center;}
+    .user-chip{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.15);
+      border-radius:8px;padding:6px 12px;}
+    .user-avatar{width:28px;height:28px;border-radius:50%;background:var(--accent);color:white;
+      display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;}
+    .user-chip span{font-size:13px;font-weight:500;}
+    .logout-btn{background:transparent;border:1px solid rgba(255,255,255,.3);color:white;
+      padding:5px 12px;border-radius:6px;cursor:pointer;font-size:13px;}
+    .main-content{padding:28px 32px;}
+
+    /* ── CARDS ── */
+    .stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px;}
+    .stat-card{background:white;border-radius:var(--radius);padding:20px 22px;box-shadow:var(--shadow);
+      display:flex;align-items:center;gap:16px;}
+    .stat-icon{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;
+      justify-content:center;font-size:22px;flex-shrink:0;}
+    .stat-card h3{font-size:26px;font-weight:700;color:var(--text);}
+    .stat-card p{font-size:12px;color:var(--text2);font-weight:500;}
+    .two-col{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:24px;}
+    .panel{background:white;border-radius:var(--radius);padding:22px;box-shadow:var(--shadow);}
+    .panel h2{font-size:15px;font-weight:700;color:var(--text);margin-bottom:16px;}
+
+    /* ── TABLE ── */
+    .table-wrap{overflow-x:auto;}
+    table{width:100%;border-collapse:collapse;}
+    th{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;
+      padding:10px 12px;background:#f8faff;border-bottom:1px solid var(--border);text-align:left;}
+    td{padding:12px 12px;font-size:13px;border-bottom:1px solid #f0f3fa;vertical-align:middle;}
+    tr:last-child td{border-bottom:none;}
+    tr:hover td{background:#fafbff;}
+
+    /* ── BADGES ── */
+    .badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;}
+    .badge-green{background:#e6f7ee;color:#2a8a5a;}
+    .badge-yellow{background:#fff8e6;color:#b07a10;}
+    .badge-red{background:#fee6e6;color:#b03030;}
+    .badge-blue{background:#e6eeff;color:#2350a0;}
+    .badge-gray{background:#f0f2f5;color:#6a7a9a;}
+    .badge-purple{background:#f0e6ff;color:#6a30a0;}
+
+    /* ── BUTTONS ── */
+    .btn{padding:8px 16px;border-radius:7px;font-size:13px;font-weight:500;cursor:pointer;border:none;transition:all .2s;font-family:inherit;}
+    .btn-sm{padding:5px 11px;font-size:12px;border-radius:6px;}
+    .btn-blue{background:var(--primary);color:white;}
+    .btn-blue:hover{background:var(--primary-light);}
+    .btn-green{background:var(--accent);color:white;}
+    .btn-green:hover{background:#3d9f6e;}
+    .btn-red{background:var(--danger);color:white;}
+    .btn-outline{background:white;border:1.5px solid var(--border);color:var(--text);}
+    .btn-outline:hover{border-color:var(--primary);color:var(--primary);}
+
+    /* ── MODAL ── */
+    .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;
+      align-items:center;justify-content:center;}
+    .modal-overlay.show{display:flex;}
+    .modal{background:white;border-radius:16px;padding:32px;width:100%;max-width:540px;
+      box-shadow:0 20px 60px rgba(0,0,0,.25);max-height:90vh;overflow-y:auto;}
+    .modal h2{font-size:18px;font-weight:700;margin-bottom:22px;}
+    .modal-actions{display:flex;gap:10px;margin-top:22px;justify-content:flex-end;}
+
+    /* ── QUICK ACTIONS ── */
+    .quick-actions{display:flex;gap:14px;margin-bottom:24px;}
+    .quick-card{flex:1;background:white;border-radius:var(--radius);padding:18px 20px;
+      box-shadow:var(--shadow);display:flex;align-items:center;gap:14px;cursor:pointer;
+      transition:box-shadow .2s,transform .2s;}
+    .quick-card:hover{box-shadow:0 6px 24px rgba(26,58,107,.14);transform:translateY(-2px);}
+    .quick-card-icon{width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;}
+    .quick-card h3{font-size:13px;font-weight:700;}
+    .quick-card p{font-size:11px;color:var(--text2);}
+
+    /* ── TOAST ── */
+    #toast-container{position:fixed;bottom:24px;right:24px;z-index:9999;display:flex;flex-direction:column;gap:10px;}
+    .toast{background:var(--primary);color:white;padding:12px 20px;border-radius:10px;font-size:13px;
+      font-weight:500;box-shadow:0 4px 20px rgba(0,0,0,.2);animation:slideIn .3s ease;min-width:240px;}
+    .toast.success{background:var(--accent);}
+    .toast.error{background:var(--danger);}
+    @keyframes slideIn{from{transform:translateX(60px);opacity:0}to{transform:translateX(0);opacity:1}}
+
+    /* ── FLOW ── */
+    .flow-steps{display:flex;gap:0;overflow-x:auto;margin-bottom:16px;}
+    .flow-step{display:flex;align-items:center;flex-shrink:0;}
+    .flow-step-inner{display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 14px;}
+    .flow-dot{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:white;}
+    .flow-dot.done{background:var(--accent);}
+    .flow-dot.active{background:var(--primary);}
+    .flow-dot.pending{background:#c0cce0;}
+    .flow-label{font-size:10px;color:var(--text2);text-align:center;max-width:80px;line-height:1.2;}
+    .flow-arrow{color:var(--border);font-size:16px;margin:0 -4px;}
+
+    /* ── FILE ── */
+    .file-drop{border:2px dashed var(--border);border-radius:10px;padding:20px;text-align:center;
+      cursor:pointer;transition:border-color .2s,background .2s;}
+    .file-drop:hover,.file-drop.dragover{border-color:var(--primary);background:#f0f4ff;}
+    .file-drop p{color:var(--text2);font-size:12px;margin-top:6px;}
+    .file-drop .file-icon{font-size:28px;}
+    .file-list{margin-top:10px;display:flex;flex-direction:column;gap:5px;}
+    .file-item{display:flex;align-items:center;gap:8px;background:#f4f6fb;padding:7px 11px;border-radius:7px;font-size:12px;}
+    .file-item span{flex:1;}
+    .file-item button{background:none;border:none;cursor:pointer;color:var(--danger);font-size:14px;}
+
+    /* ── EMPTY ── */
+    .empty-state{text-align:center;padding:40px 24px;color:var(--text2);}
+    .empty-state .icon{font-size:44px;margin-bottom:10px;}
+    .empty-state p{font-size:13px;}
+
+    /* ── NOTIF PANEL ── */
+    .notif-panel{position:fixed;top:60px;right:16px;background:white;border-radius:12px;
+      box-shadow:0 8px 32px rgba(0,0,0,.15);width:320px;z-index:500;display:none;}
+    .notif-panel.show{display:block;}
+    .notif-header{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
+    .notif-header h3{font-size:14px;font-weight:700;}
+    .notif-item{padding:12px 16px;border-bottom:1px solid #f0f3fa;font-size:12px;}
+    .notif-item:last-child{border-bottom:none;}
+    .notif-item strong{display:block;margin-bottom:2px;font-size:13px;}
+    .notif-item time{color:var(--text2);font-size:11px;}
+
+    /* ── TABS ── */
+    .page-tabs{display:flex;gap:4px;margin-bottom:20px;background:white;border-radius:10px;
+      padding:4px;box-shadow:var(--shadow);width:fit-content;}
+    .page-tab{padding:8px 18px;border-radius:7px;cursor:pointer;font-size:13px;font-weight:500;
+      color:var(--text2);border:none;background:transparent;transition:all .2s;font-family:inherit;}
+    .page-tab.active{background:var(--primary);color:white;}
+
+    /* ── DISCIPLINE TAG ── */
+    .disc-tag{display:inline-flex;align-items:center;gap:4px;background:#eef2ff;color:var(--primary);
+      padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;margin:2px;}
+
+    .hidden{display:none!important;}
+    .mt-4{margin-top:16px;}
+    .flex{display:flex;}
+    .gap-2{gap:8px;}
+    .items-center{align-items:center;}
+    .justify-between{justify-content:space-between;}
+    .w-full{width:100%;}
+
+    @media(max-width:900px){
+      .stat-grid{grid-template-columns:1fr 1fr;}
+      .two-col{grid-template-columns:1fr;}
+      .main-content{padding:16px;}
+      .quick-actions{flex-direction:column;}
+    }
+  </style>
+</head>
+<body>
+
+<!-- AUTH SCREEN -->
+<div id="auth-screen">
+  <div class="auth-box">
+    <div class="auth-logo">
+      <div class="auth-logo-icon">🎓</div>
+      <div>
+        <h1>Портал аттестации МарГУ</h1>
+        <p>Марийский государственный университет</p>
+      </div>
+    </div>
+    <div class="auth-tabs">
+      <div class="auth-tab active" onclick="switchAuthTab('login')">Вход</div>
+      <div class="auth-tab" onclick="switchAuthTab('register')">Регистрация</div>
+    </div>
+
+    <!-- LOGIN -->
+    <div id="login-form">
+      <div class="form-group">
+        <label>Email или телефон</label>
+        <input type="text" id="login-id" placeholder="example@margu.ru или +7900..."/>
+      </div>
+      <div class="form-group">
+        <label>Пароль</label>
+        <input type="password" id="login-pass" placeholder="Ваш пароль"/>
+      </div>
+      <button class="btn-primary" onclick="doLogin()">Войти</button>
+      <div class="auth-switch">Нет аккаунта? <a onclick="switchAuthTab('register')">Зарегистрироваться</a></div>
+    </div>
+
+    <!-- REGISTER -->
+    <div id="register-form" class="hidden">
+      <p style="font-size:12px;color:var(--text2);margin-bottom:8px;font-weight:600;">Я являюсь:</p>
+      <div class="role-select" id="role-select-row">
+        <div class="role-btn active" id="role-student" onclick="selectRole('student')">👨‍🎓 Студент</div>
+        <div class="role-btn" id="role-teacher" onclick="selectRole('teacher')">👨‍🏫 Преподаватель</div>
+        <div class="role-btn" id="role-admin" onclick="selectRole('admin')">⚙️ Администратор</div>
+      </div>
+      <div class="form-group">
+        <label>Фамилия Имя Отчество</label>
+        <input type="text" id="reg-name" placeholder="Иванов Иван Иванович"/>
+      </div>
+      <div class="form-group">
+        <label>Email <span style="color:var(--danger)">*</span></label>
+        <input type="email" id="reg-email" placeholder="student@margu.ru"/>
+      </div>
+      <div class="form-group">
+        <label>Телефон</label>
+        <input type="tel" id="reg-phone" placeholder="+7 (900) 000-00-00"/>
+      </div>
+      <div class="form-group" id="group-field-student">
+        <label>Группа</label>
+        <input type="text" id="reg-group" placeholder="КСИ-21"/>
+      </div>
+      <div class="form-group hidden" id="group-field-dept">
+        <label>Кафедра / Подразделение</label>
+        <input type="text" id="reg-dept" placeholder="Кафедра информатики"/>
+      </div>
+      <div class="form-group hidden" id="group-field-disciplines">
+        <label>Дисциплины (через запятую)</label>
+        <input type="text" id="reg-disciplines" placeholder="Математика, Физика, Информатика"/>
+        <div style="font-size:11px;color:var(--text2);margin-top:4px;">Укажите дисциплины, которые вы преподаёте</div>
+      </div>
+      <div class="form-group">
+        <label>Пароль</label>
+        <input type="password" id="reg-pass" placeholder="Минимум 6 символов"/>
+      </div>
+      <button class="btn-primary" onclick="startRegister()">Получить код подтверждения</button>
+      <div class="auth-switch">Уже есть аккаунт? <a onclick="switchAuthTab('login')">Войти</a></div>
+    </div>
+  </div>
+</div>
+
+<!-- OTP VERIFICATION SCREEN -->
+<div id="otp-screen" style="display:none;min-height:100vh;align-items:center;justify-content:center;background:linear-gradient(135deg,#1a3a6b 0%,#2354a0 60%,#1a6b55 100%);">
+  <div class="otp-box">
+    <div class="otp-icon">📧</div>
+    <h2>Подтверждение Email</h2>
+    <p id="otp-desc">Мы отправили 6-значный код на вашу почту. Введите его ниже.</p>
+    <div class="otp-inputs">
+      <input class="otp-input" maxlength="1" id="otp0" oninput="otpNext(0)" onkeydown="otpBack(event,0)"/>
+      <input class="otp-input" maxlength="1" id="otp1" oninput="otpNext(1)" onkeydown="otpBack(event,1)"/>
+      <input class="otp-input" maxlength="1" id="otp2" oninput="otpNext(2)" onkeydown="otpBack(event,2)"/>
+      <input class="otp-input" maxlength="1" id="otp3" oninput="otpNext(3)" onkeydown="otpBack(event,3)"/>
+      <input class="otp-input" maxlength="1" id="otp4" oninput="otpNext(4)" onkeydown="otpBack(event,4)"/>
+      <input class="otp-input" maxlength="1" id="otp5" oninput="otpNext(5)" onkeydown="otpBack(event,5)"/>
+    </div>
+    <button class="btn-primary" onclick="verifyOTP()">Подтвердить и создать аккаунт</button>
+    <div class="otp-resend" style="margin-top:14px;">
+      <span id="otp-timer-wrap">Повторная отправка через <span class="otp-timer" id="otp-timer">60</span>с</span>
+      <span id="otp-resend-link" class="hidden"><a onclick="resendOTP()">Отправить код повторно</a></span>
+    </div>
+    <div style="margin-top:14px;"><a style="font-size:13px;color:var(--text2);cursor:pointer;" onclick="cancelOTP()">← Вернуться назад</a></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="topbar">
+    <div class="topbar-logo"><span>🎓</span> Портал аттестации МарГУ</div>
+    <div class="topbar-nav" id="nav-tabs"></div>
+    <div class="topbar-right">
+      <button class="notif-btn" onclick="toggleNotif()" id="notif-btn">🔔
+        <span class="notif-badge hidden" id="notif-badge">0</span>
+      </button>
+      <div class="user-chip">
+        <div class="user-avatar" id="user-avatar">?</div>
+        <span id="user-name-chip">Пользователь</span>
+      </div>
+      <button class="logout-btn" onclick="doLogout()">Выход</button>
+    </div>
+  </div>
+  <div class="notif-panel" id="notif-panel">
+    <div class="notif-header">
+      <h3>Уведомления</h3>
+      <button class="btn btn-sm btn-outline" onclick="clearNotifications()">Очистить</button>
+    </div>
+    <div id="notif-list"></div>
+  </div>
+  <div class="main-content" id="page-content"></div>
+</div>
+
+<div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
+  <div class="modal" id="modal-body"></div>
+</div>
+<div id="toast-container"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
